@@ -16,7 +16,7 @@ jobs:
   run-news-fetcher:
     runs-on: ubuntu-latest
 
-    # 📌 FIX 1: Log file ကို Repository သို့ Commit လုပ်ရန်အတွက် Permission
+    # Log file ကို Repository သို့ Commit လုပ်ရန်အတွက် Permission
     permissions:
       contents: write
 
@@ -37,10 +37,8 @@ jobs:
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
         run: |
-          # လက်ရှိ UTC နာရီကို ယူခြင်း (GitHub Actions ရဲ့ default time zone)
+          # လက်ရှိ UTC နာရီကို ယူခြင်း
           CURRENT_HOUR=$(date -u +%H) 
-
-          # Schedule အလိုက် Category သတ်မှတ်ခြင်း
           if [ "$CURRENT_HOUR" == "01" ]; then
             CATEGORY="General" 
           elif [ "$CURRENT_HOUR" == "05" ]; then
@@ -59,11 +57,8 @@ jobs:
           LOG_FILE="logs/run_${{ github.run_id }}_${CATEGORY}.log" 
 
           mkdir -p logs
-
-          # Log file ထဲသို့ output အားလုံးကို Redirect လုပ်ခြင်း
           echo "--- Workflow Run Start: $(date) ---" > $LOG_FILE
           echo "Running news fetcher for category: $CATEGORY" >> $LOG_FILE
-          # Python Script Output (stdout နှင့် stderr နှစ်ခုလုံး) ကို Log ထဲသို့ ထည့်ခြင်း
           python news_fetcher.py "$CATEGORY" >> $LOG_FILE 2>&1
           echo "Workflow execution log saved to $LOG_FILE" >> $LOG_FILE
 
@@ -79,13 +74,13 @@ jobs:
           if [ -f "$LOG_FILE" ]; then
             git add $LOG_FILE
             
-            # Log file add ပြီးနောက်၊ ကျန်ရှိသော changes များကို ရှင်းလင်းရန်
+            # 📌 FINAL FIX: git pull မလုပ်ခင် working directory ကို သန့်ရှင်းရန် (Error 128 ဖြေရှင်းရန်)
+            # Log file ကို Index ထဲ Add ပြီးနောက်၊ ကျန်ရှိသော changes များကို Index မှ ပြန်ထုတ်ခြင်း (Optional)
             if [ -n "$(git status --porcelain)" ]; then
-              # Index မှာမပါသေးတဲ့ changes တွေရှိရင် ပြန်ဆွဲထုတ်လိုက်တယ်
               git checkout .
             fi
             
-            # 📌 FIX: Push Rejected Error ကို ဖြေရှင်းရန်၊ Commit မလုပ်ခင် Remote Changes များကို ဆွဲယူခြင်း
+            # Index Error မဖြစ်စေရန် Working Directory ရှင်းပြီးနောက် Remote Changes များကို ဆွဲယူခြင်း
             git pull --rebase origin main 
             
             if git diff --cached --exit-code; then
