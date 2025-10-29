@@ -1,0 +1,57 @@
+# .github/workflows/news_fetch.yml တွင် အစားထိုးရန်
+
+name: Fetch and Save News by Category
+
+on:
+  schedule:
+    # 📌 မြန်မာစံတော်ချိန် (MMT - UTC+6:30) ကို အခြေခံသော ၅ ကြိမ်
+    - cron: "30 1 * * *" # 01:30 UTC = 8:00 AM MMT (General)
+    - cron: "30 5 * * *" # 05:30 UTC = 12:00 PM MMT (Technology)
+    - cron: "30 9 * * *" # 09:30 UTC = 4:00 PM MMT (World Politics)
+    - cron: "30 13 * * *" # 13:30 UTC = 8:00 PM MMT (Business and Finance)
+    - cron: "30 16 * * *" # 16:30 UTC = 11:00 PM MMT (Daily Summary)
+  workflow_dispatch:
+
+jobs:
+  run-news-fetcher:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: pip install requests gspread
+
+      - name: Determine Category and Run Script
+        id: run_script_step
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+        run: |
+          # လက်ရှိ UTC နာရီကို ယူခြင်း (GitHub Actions ရဲ့ default time zone)
+          CURRENT_HOUR=$(date -u +%H) 
+
+          # Schedule အလိုက် Category သတ်မှတ်ခြင်း (မိနစ် ၃၀ မှာသာ run မှာ ဖြစ်တဲ့အတွက် နာရီကိုပဲ စစ်ဆေးသည်)
+          if [ "$CURRENT_HOUR" == "01" ]; then
+            CATEGORY="General" # 8:00 AM MMT
+          elif [ "$CURRENT_HOUR" == "05" ]; then
+            CATEGORY="Technology" # 12:00 PM MMT
+          elif [ "$CURRENT_HOUR" == "09" ]; then
+            CATEGORY="World Politics" # 4:00 PM MMT
+          elif [ "$CURRENT_HOUR" == "13" ]; then
+            CATEGORY="Business and Finance" # 8:00 PM MMT
+          elif [ "$CURRENT_HOUR" == "16" ]; then
+            CATEGORY="Daily Summary" # 11:00 PM MMT
+          else
+            # အကယ်၍ အချိန်မကိုက်ပါက၊ ယာယီအားဖြင့် General ကို သုံးပါမည်
+            echo "::warning::Scheduled run time did not match a specific category hour. Using General."
+            CATEGORY="General"
+          fi
+
+          echo "Running news fetcher for category: $CATEGORY"
+          # category ကို python script သို့ argument အဖြစ် ပို့လိုက်သည်
+          python news_fetcher.py "$CATEGORY"
