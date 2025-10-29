@@ -1,25 +1,25 @@
-# .github/workflows/news_fetch.yml ကို အစားထိုးရန်
+# .github/workflows/news_fetch.yml ကို အောက်ပါအတိုင်း လုံးဝ အစားထိုးရန်
 
 name: Fetch and Save News by Category
 
 on:
   schedule:
     # 📌 မြန်မာစံတော်ချိန် (MMT - UTC+6:30) ကို အခြေခံသော ၅ ကြိမ်
-    - cron: "30 1 * * *"
-    - cron: "30 5 * * *"
-    - cron: "30 9 * * *"
-    - cron: "30 13 * * *"
-    - cron: "30 16 * * *"
+    - cron: "30 1 * * *" # 01:30 UTC = 8:00 AM MMT (General)
+    - cron: "30 5 * * *" # 05:30 UTC = 12:00 PM MMT (Technology)
+    - cron: "30 9 * * *" # 09:30 UTC = 4:00 PM MMT (World Politics)
+    - cron: "30 13 * * *" # 13:30 UTC = 8:00 PM MMT (Business and Finance)
+    - cron: "30 16 * * *" # 16:30 UTC = 11:00 PM MMT (Daily Summary)
   workflow_dispatch:
 
 jobs:
   run-news-fetcher:
     runs-on: ubuntu-latest
-
-    # 📌 FIX 1: Log file ကို Repository သို့ Commit လုပ်ရန်အတွက် Permission ထည့်သွင်းခြင်း
+    
+    # 📌 FIX 1: Log file ကို Repository သို့ Commit လုပ်ရန်အတွက် Permission
     permissions:
       contents: write
-
+      
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -37,8 +37,10 @@ jobs:
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
         run: |
-          # ... (Category Determination Logic)
+          # လက်ရှိ UTC နာရီကို ယူခြင်း (GitHub Actions ရဲ့ default time zone)
           CURRENT_HOUR=$(date -u +%H) 
+
+          # Schedule အလိုက် Category သတ်မှတ်ခြင်း
           if [ "$CURRENT_HOUR" == "01" ]; then
             CATEGORY="General" 
           elif [ "$CURRENT_HOUR" == "05" ]; then
@@ -52,13 +54,12 @@ jobs:
           else
             CATEGORY="General" 
           fi
-
+          
           echo "CATEGORY=$CATEGORY" >> $GITHUB_OUTPUT 
-          # Log file name တွင် Run ID ကို သုံးခြင်း
           LOG_FILE="logs/run_${{ github.run_id }}_${CATEGORY}.log" 
 
           mkdir -p logs
-
+          
           # Log file ထဲသို့ output အားလုံးကို Redirect လုပ်ခြင်း
           echo "--- Workflow Run Start: $(date) ---" > $LOG_FILE
           echo "Running news fetcher for category: $CATEGORY" >> $LOG_FILE
@@ -66,24 +67,27 @@ jobs:
           python news_fetcher.py "$CATEGORY" >> $LOG_FILE 2>&1
           echo "Workflow execution log saved to $LOG_FILE" >> $LOG_FILE
 
+
       - name: Commit and Push Log File
         # Run Failure ဖြစ်ခဲ့ရင်တောင် Log ကို Commit လုပ်နိုင်ရန်
-        if: always()
+        if: always() 
         run: |
           LOG_FILE="logs/run_${{ github.run_id }}_${{ steps.run_script_step.outputs.CATEGORY }}.log"
-
+          
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
+          
           if [ -f "$LOG_FILE" ]; then
             git add $LOG_FILE
+            
+            # 📌 FIX 2: Push Rejected Error ကို ဖြေရှင်းရန်၊ Commit မလုပ်ခင် Remote Changes များကို ဆွဲယူခြင်း
+            git pull --rebase origin main 
             
             if git diff --cached --exit-code; then
               echo "No changes in $LOG_FILE to commit."
             else
               git commit -m "Workflow: Save log for run ${{ github.run_id }} (${{ steps.run_script_step.outputs.CATEGORY }})"
               echo "Pushing log file to repository..."
-              # force-with-lease ကို သုံး၍ push လုပ်ခြင်း
               git push 
             fi
           else
