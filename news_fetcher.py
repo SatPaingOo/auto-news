@@ -9,7 +9,6 @@ from google.oauth2.service_account import Credentials
 # --- 1. Environment Variables & Setup ---
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 GOOGLE_SHEET_ID = os.getenv('GOOGLE_SHEET_ID')
-# GitHub Secrets မှ JSON string ကို တိုက်ရိုက်ယူသည်
 GOOGLE_CREDENTIALS_JSON_STRING = os.getenv('GOOGLE_CREDENTIALS_JSON') 
 CREDENTIALS_FILE_PATH = 'service_account_credentials.json'
 
@@ -177,8 +176,8 @@ def save_to_google_sheets(news_data):
 
     # 📌 FIX: Scopes များကို မှန်ကန်သော Plain String များအဖြစ် ပြင်ဆင်ထားသည်
     scopes = [
-        '[https://www.googleapis.com/auth/spreadsheets](https://www.googleapis.com/auth/spreadsheets)', 
-        '[https://www.googleapis.com/auth/drive](https://www.googleapis.com/auth/drive)'         
+        'https://www.googleapis.com/auth/spreadsheets',
+        'https://www.googleapis.com/auth/drive'
     ]
     
     print("Connecting to Google Sheets...")
@@ -191,7 +190,7 @@ def save_to_google_sheets(news_data):
         # Header Row မရှိသေးရင် ထည့်သွင်းခြင်း
         HEADER_ROW = ['Title (EN)', 'Type (Category)', 'Rewritten Content (MM)', 'Visual Keyword (EN)', 'Original Content (MM)', 'Date', 'Source URL', 'Added Date']
         if not worksheet.row_values(1):
-             worksheet.append_row(HEADER_ROW)
+            worksheet.append_row(HEADER_ROW)
 
         # Title အဟောင်းများ စစ်ဆေးခြင်း
         existing_titles = set(row[0] for row in worksheet.get_all_values() if row)
