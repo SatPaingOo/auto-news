@@ -5,16 +5,21 @@ name: Fetch and Save News by Category
 on:
   schedule:
     # 📌 မြန်မာစံတော်ချိန် (MMT - UTC+6:30) ကို အခြေခံသော ၅ ကြိမ်
-    - cron: "30 1 * * *" # 01:30 UTC = 8:00 AM MMT (General)
-    - cron: "30 5 * * *" # 05:30 UTC = 12:00 PM MMT (Technology)
-    - cron: "30 9 * * *" # 09:30 UTC = 4:00 PM MMT (World Politics)
-    - cron: "30 13 * * *" # 13:30 UTC = 8:00 PM MMT (Business and Finance)
-    - cron: "30 16 * * *" # 16:30 UTC = 11:00 PM MMT (Daily Summary)
+    - cron: "30 1 * * *"
+    - cron: "30 5 * * *"
+    - cron: "30 9 * * *"
+    - cron: "30 13 * * *"
+    - cron: "30 16 * * *"
   workflow_dispatch:
 
 jobs:
   run-news-fetcher:
     runs-on: ubuntu-latest
+
+    # 📌 FIX 1: Log file ကို Repository သို့ Commit လုပ်ရန်အတွက် Permission ထည့်သွင်းခြင်း
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -32,62 +37,54 @@ jobs:
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
         run: |
-          # လက်ရှိ UTC နာရီကို ယူခြင်း (GitHub Actions ရဲ့ default time zone)
+          # ... (Category Determination Logic)
           CURRENT_HOUR=$(date -u +%H) 
-
-          # Schedule အလိုက် Category သတ်မှတ်ခြင်း
           if [ "$CURRENT_HOUR" == "01" ]; then
-            CATEGORY="General"
+            CATEGORY="General" 
           elif [ "$CURRENT_HOUR" == "05" ]; then
-            CATEGORY="Technology"
+            CATEGORY="Technology" 
           elif [ "$CURRENT_HOUR" == "09" ]; then
-            CATEGORY="World Politics"
+            CATEGORY="World Politics" 
           elif [ "$CURRENT_HOUR" == "13" ]; then
-            CATEGORY="Business and Finance"
+            CATEGORY="Business and Finance" 
           elif [ "$CURRENT_HOUR" == "16" ]; then
-            CATEGORY="Daily Summary"
+            CATEGORY="Daily Summary" 
           else
-            # Manual run တွင် Default အဖြစ် General ကို သုံးပါမည်
             CATEGORY="General" 
           fi
 
-          # 📌 Category ကို Step Output အဖြစ် ထုတ်ပါ (Log File Name အတွက်)
           echo "CATEGORY=$CATEGORY" >> $GITHUB_OUTPUT 
+          # Log file name တွင် Run ID ကို သုံးခြင်း
+          LOG_FILE="logs/run_${{ github.run_id }}_${CATEGORY}.log" 
 
-          LOG_FILE="logs/run_${{ github.run_id }}_${CATEGORY}.log"
-
-          # Log directory မရှိသေးရင် ဖန်တီးပါ
           mkdir -p logs
 
-          # 📌 Log file ထဲသို့ output အားလုံးကို Redirect လုပ်ခြင်း
+          # Log file ထဲသို့ output အားလုံးကို Redirect လုပ်ခြင်း
           echo "--- Workflow Run Start: $(date) ---" > $LOG_FILE
           echo "Running news fetcher for category: $CATEGORY" >> $LOG_FILE
           # Python Script Output (stdout နှင့် stderr နှစ်ခုလုံး) ကို Log ထဲသို့ ထည့်ခြင်း
           python news_fetcher.py "$CATEGORY" >> $LOG_FILE 2>&1
           echo "Workflow execution log saved to $LOG_FILE" >> $LOG_FILE
 
-      - name: 📌 Commit and Push Log File
+      - name: Commit and Push Log File
         # Run Failure ဖြစ်ခဲ့ရင်တောင် Log ကို Commit လုပ်နိုင်ရန်
         if: always()
         run: |
-          # Log file name ကို ပြန်လည်သတ်မှတ်ခြင်း
           LOG_FILE="logs/run_${{ github.run_id }}_${{ steps.run_script_step.outputs.CATEGORY }}.log"
 
-          # Git User ချိန်ညှိခြင်း (GitHub Actions bot ကို သုံးခြင်း)
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Log file ရှိမှသာ commit လုပ်ပါ
           if [ -f "$LOG_FILE" ]; then
             git add $LOG_FILE
             
-            # Changes ရှိမှသာ Commit လုပ်ပါ
             if git diff --cached --exit-code; then
               echo "No changes in $LOG_FILE to commit."
             else
               git commit -m "Workflow: Save log for run ${{ github.run_id }} (${{ steps.run_script_step.outputs.CATEGORY }})"
               echo "Pushing log file to repository..."
-              git push
+              # force-with-lease ကို သုံး၍ push လုပ်ခြင်း
+              git push 
             fi
           else
             echo "Log file $LOG_FILE not found, skipping commit."
