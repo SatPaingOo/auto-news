@@ -1,0 +1,5 @@
+--- Workflow Run Start: Wed Oct 29 10:55:28 UTC 2025 ---
+Running news fetcher for category: General
+Fetching news for category: General...
+Error fetching or parsing structured news: 400 Client Error: Bad Request for url: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=AIzaSyCKm8WHNQGt3jX7sOw5rduuiT19kdaPbXM
+Workflow execution log saved to logs/run_18905478122_General.log
