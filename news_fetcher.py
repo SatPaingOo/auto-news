@@ -3,13 +3,14 @@ import requests
 import gspread
 import json
 import time 
-import sys # Command line argument အတွက် ထပ်ထည့်လိုက်သည်
+import sys 
 from google.oauth2.service_account import Credentials
 
 # --- 1. Environment Variables & Setup ---
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 GOOGLE_SHEET_ID = os.getenv('GOOGLE_SHEET_ID')
-GOOGLE_CREDENTIALS_JSON_STRING = os.getenv('GOOGLE_CREDENTIALS_JSON')
+# GitHub Secrets မှ JSON string ကို တိုက်ရိုက်ယူသည်
+GOOGLE_CREDENTIALS_JSON_STRING = os.getenv('GOOGLE_CREDENTIALS_JSON') 
 CREDENTIALS_FILE_PATH = 'service_account_credentials.json'
 
 # Gemini Flash Model Endpoint (Text & Search အတွက်)
@@ -17,7 +18,7 @@ GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini
 
 def setup_google_credentials():
     """
-    GitHub Secret မှ JSON string ကို ဖိုင်အဖြစ် ရေးသားခြင်း (gspread အတွက်)
+    GitHub Secret မှ JSON string ကို gspread အတွက် ဖိုင်အဖြစ် ရေးသားခြင်း
     """
     if GOOGLE_CREDENTIALS_JSON_STRING:
         try:
@@ -174,7 +175,7 @@ def save_to_google_sheets(news_data):
         print("Google Sheets credentials setup failed. Cannot save data.")
         return
 
-    # 📌 FIX: Scopes များကို မှန်ကန်စွာ ပြင်ဆင်ထားသည်
+    # 📌 FIXED: Scopes များကို မှန်ကန်စွာ ပြင်ဆင်ထားသည်
     scopes = [
         '[https://www.googleapis.com/auth/spreadsheets](https://www.googleapis.com/auth/spreadsheets)', 
         '[https://www.googleapis.com/auth/drive](https://www.googleapis.com/auth/drive)'         
