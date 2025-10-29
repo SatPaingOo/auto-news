@@ -174,10 +174,10 @@ def save_to_google_sheets(news_data):
         print("Google Sheets credentials setup failed. Cannot save data.")
         return
 
-    # 📌 FIX: Scopes များကို မှန်ကန်သော Plain String များအဖြစ် ပြင်ဆင်ထားသည်
+    # 📌 FINAL FIX: Scopes များကို မှန်ကန်သော Plain String များအဖြစ် ပြင်ဆင်ခြင်း
     scopes = [
-        'https://www.googleapis.com/auth/spreadsheets',
-        'https://www.googleapis.com/auth/drive'
+        'https://www.googleapis.com/auth/spreadsheets', 
+        'https://www.googleapis.com/auth/drive'         
     ]
     
     print("Connecting to Google Sheets...")
