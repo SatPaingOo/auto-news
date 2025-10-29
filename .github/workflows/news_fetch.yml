@@ -15,11 +15,11 @@ on:
 jobs:
   run-news-fetcher:
     runs-on: ubuntu-latest
-    
+
     # 📌 FIX 1: Log file ကို Repository သို့ Commit လုပ်ရန်အတွက် Permission
     permissions:
       contents: write
-      
+
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -54,12 +54,12 @@ jobs:
           else
             CATEGORY="General" 
           fi
-          
+
           echo "CATEGORY=$CATEGORY" >> $GITHUB_OUTPUT 
           LOG_FILE="logs/run_${{ github.run_id }}_${CATEGORY}.log" 
 
           mkdir -p logs
-          
+
           # Log file ထဲသို့ output အားလုံးကို Redirect လုပ်ခြင်း
           echo "--- Workflow Run Start: $(date) ---" > $LOG_FILE
           echo "Running news fetcher for category: $CATEGORY" >> $LOG_FILE
@@ -67,20 +67,25 @@ jobs:
           python news_fetcher.py "$CATEGORY" >> $LOG_FILE 2>&1
           echo "Workflow execution log saved to $LOG_FILE" >> $LOG_FILE
 
-
       - name: Commit and Push Log File
         # Run Failure ဖြစ်ခဲ့ရင်တောင် Log ကို Commit လုပ်နိုင်ရန်
-        if: always() 
+        if: always()
         run: |
           LOG_FILE="logs/run_${{ github.run_id }}_${{ steps.run_script_step.outputs.CATEGORY }}.log"
-          
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           if [ -f "$LOG_FILE" ]; then
             git add $LOG_FILE
             
-            # 📌 FIX 2: Push Rejected Error ကို ဖြေရှင်းရန်၊ Commit မလုပ်ခင် Remote Changes များကို ဆွဲယူခြင်း
+            # Log file add ပြီးနောက်၊ ကျန်ရှိသော changes များကို ရှင်းလင်းရန်
+            if [ -n "$(git status --porcelain)" ]; then
+              # Index မှာမပါသေးတဲ့ changes တွေရှိရင် ပြန်ဆွဲထုတ်လိုက်တယ်
+              git checkout .
+            fi
+            
+            # 📌 FIX: Push Rejected Error ကို ဖြေရှင်းရန်၊ Commit မလုပ်ခင် Remote Changes များကို ဆွဲယူခြင်း
             git pull --rebase origin main 
             
             if git diff --cached --exit-code; then
