@@ -1,4 +1,4 @@
-# .github/workflows/news_fetch.yml တွင် အစားထိုးရန်
+# .github/workflows/news_fetch.yml ကို အစားထိုးရန်
 
 name: Fetch and Save News by Category
 
@@ -35,23 +35,60 @@ jobs:
           # လက်ရှိ UTC နာရီကို ယူခြင်း (GitHub Actions ရဲ့ default time zone)
           CURRENT_HOUR=$(date -u +%H) 
 
-          # Schedule အလိုက် Category သတ်မှတ်ခြင်း (မိနစ် ၃၀ မှာသာ run မှာ ဖြစ်တဲ့အတွက် နာရီကိုပဲ စစ်ဆေးသည်)
+          # Schedule အလိုက် Category သတ်မှတ်ခြင်း
           if [ "$CURRENT_HOUR" == "01" ]; then
-            CATEGORY="General" # 8:00 AM MMT
-          elif [ "$CURRENT_HOUR" == "05" ]; then
-            CATEGORY="Technology" # 12:00 PM MMT
-          elif [ "$CURRENT_HOUR" == "09" ]; then
-            CATEGORY="World Politics" # 4:00 PM MMT
-          elif [ "$CURRENT_HOUR" == "13" ]; then
-            CATEGORY="Business and Finance" # 8:00 PM MMT
-          elif [ "$CURRENT_HOUR" == "16" ]; then
-            CATEGORY="Daily Summary" # 11:00 PM MMT
-          else
-            # အကယ်၍ အချိန်မကိုက်ပါက၊ ယာယီအားဖြင့် General ကို သုံးပါမည်
-            echo "::warning::Scheduled run time did not match a specific category hour. Using General."
             CATEGORY="General"
+          elif [ "$CURRENT_HOUR" == "05" ]; then
+            CATEGORY="Technology"
+          elif [ "$CURRENT_HOUR" == "09" ]; then
+            CATEGORY="World Politics"
+          elif [ "$CURRENT_HOUR" == "13" ]; then
+            CATEGORY="Business and Finance"
+          elif [ "$CURRENT_HOUR" == "16" ]; then
+            CATEGORY="Daily Summary"
+          else
+            # Manual run တွင် Default အဖြစ် General ကို သုံးပါမည်
+            CATEGORY="General" 
           fi
 
-          echo "Running news fetcher for category: $CATEGORY"
-          # category ကို python script သို့ argument အဖြစ် ပို့လိုက်သည်
-          python news_fetcher.py "$CATEGORY"
+          # 📌 Category ကို Step Output အဖြစ် ထုတ်ပါ (Log File Name အတွက်)
+          echo "CATEGORY=$CATEGORY" >> $GITHUB_OUTPUT 
+
+          LOG_FILE="logs/run_${{ github.run_id }}_${CATEGORY}.log"
+
+          # Log directory မရှိသေးရင် ဖန်တီးပါ
+          mkdir -p logs
+
+          # 📌 Log file ထဲသို့ output အားလုံးကို Redirect လုပ်ခြင်း
+          echo "--- Workflow Run Start: $(date) ---" > $LOG_FILE
+          echo "Running news fetcher for category: $CATEGORY" >> $LOG_FILE
+          # Python Script Output (stdout နှင့် stderr နှစ်ခုလုံး) ကို Log ထဲသို့ ထည့်ခြင်း
+          python news_fetcher.py "$CATEGORY" >> $LOG_FILE 2>&1
+          echo "Workflow execution log saved to $LOG_FILE" >> $LOG_FILE
+
+      - name: 📌 Commit and Push Log File
+        # Run Failure ဖြစ်ခဲ့ရင်တောင် Log ကို Commit လုပ်နိုင်ရန်
+        if: always()
+        run: |
+          # Log file name ကို ပြန်လည်သတ်မှတ်ခြင်း
+          LOG_FILE="logs/run_${{ github.run_id }}_${{ steps.run_script_step.outputs.CATEGORY }}.log"
+
+          # Git User ချိန်ညှိခြင်း (GitHub Actions bot ကို သုံးခြင်း)
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Log file ရှိမှသာ commit လုပ်ပါ
+          if [ -f "$LOG_FILE" ]; then
+            git add $LOG_FILE
+            
+            # Changes ရှိမှသာ Commit လုပ်ပါ
+            if git diff --cached --exit-code; then
+              echo "No changes in $LOG_FILE to commit."
+            else
+              git commit -m "Workflow: Save log for run ${{ github.run_id }} (${{ steps.run_script_step.outputs.CATEGORY }})"
+              echo "Pushing log file to repository..."
+              git push
+            fi
+          else
+            echo "Log file $LOG_FILE not found, skipping commit."
+          fi
